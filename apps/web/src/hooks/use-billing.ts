@@ -1,42 +1,56 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
-import type { Subscription, Invoice, UsageRecord } from "@/types/billing";
+import { unwrapApiData } from "@/lib/api-response";
+import { useAuth } from "@/providers/auth-provider";
+import type { BillingOverview, BillingInvoice, BillingUsageItem } from "@/types/billing";
 
-export function useSubscription() {
-  return useQuery({
-    queryKey: ["subscription"],
+export function useBillingOverview() {
+  const { user, isAuthenticated } = useAuth();
+
+  return useQuery<BillingOverview>({
+    queryKey: ["billing", "overview", user?.tenantId],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Subscription }>("/billing/subscription");
-      return data.data;
+      const { data } = await apiClient.get<{ data: BillingOverview }>("/billing");
+      return unwrapApiData<BillingOverview>(data);
     },
+    enabled: isAuthenticated && Boolean(user?.tenantId),
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
   });
 }
 
-export function useInvoices() {
-  return useQuery({
-    queryKey: ["invoices"],
+export function useBillingInvoices() {
+  const { user, isAuthenticated } = useAuth();
+
+  return useQuery<BillingInvoice[]>({
+    queryKey: ["billing", "invoices", user?.tenantId],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Invoice[] }>("/billing/invoices");
-      return data.data;
+      const { data } = await apiClient.get<{ data: BillingInvoice[] }>("/billing/invoices");
+      return unwrapApiData<BillingInvoice[]>(data);
     },
+    enabled: isAuthenticated && Boolean(user?.tenantId),
   });
 }
 
-export function useUsage(period?: string) {
-  return useQuery({
-    queryKey: ["usage", period],
+export function useBillingUsage() {
+  const { user, isAuthenticated } = useAuth();
+
+  return useQuery<{ items: BillingUsageItem[]; periodStart: string; periodEnd: string | null }>({
+    queryKey: ["billing", "usage", user?.tenantId],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: UsageRecord }>("/billing/usage", { params: { period } });
-      return data.data;
+      const { data } = await apiClient.get<{
+        data: { items: BillingUsageItem[]; periodStart: string; periodEnd: string | null };
+      }>("/billing/usage");
+      return unwrapApiData(data);
     },
+    enabled: isAuthenticated && Boolean(user?.tenantId),
   });
 }
 
-export function useCreateCheckout() {
-  return useMutation({
-    mutationFn: async (planId: string) => {
-      const { data } = await apiClient.post("/billing/checkout", { planId });
-      return data;
-    },
-  });
+export function useInvalidateBilling() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["billing"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
 }

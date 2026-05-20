@@ -1,7 +1,10 @@
 import apiClient from "@/lib/api-client";
+import { unwrapApiData } from "@/lib/api-response";
+import type { DashboardMetrics } from "@/types/dashboard";
+
 export const dashboardService = {
-  async getMetrics() {
-    const { data } = await apiClient.get("/dashboard");
-    return data.data;
+  async getMetrics(): Promise<DashboardMetrics> {
+    const { data } = await apiClient.get<{ data: DashboardMetrics }>("/dashboard");
+    return unwrapApiData<DashboardMetrics>(data);
   },
 };

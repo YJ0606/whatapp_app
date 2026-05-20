@@ -1,59 +1,42 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
 
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  tenantId: string;
-}
+import { createContext, useContext, useEffect, useState } from "react";
+import { useMe, useLogout } from "@/hooks/use-auth";
+import { getStoredUser, isAuthenticated, syncAuthCookieFromStorage } from "@/lib/auth";
+import type { AuthUser } from "@/types/auth";
 
 interface AuthContextValue {
-  user: User | null;
+  user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  isAuthenticated: boolean;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
+  const { data: user, isLoading: meLoading } = useMe();
+  const logoutMutation = useLogout();
 
   useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem("waai_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    syncAuthCookieFromStorage();
+    setHydrated(true);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // In real app: POST /api/v1/auth/login
-    const mockUser: User = {
-      id: "usr_1",
-      email,
-      firstName: "Admin",
-      lastName: "User",
-      role: "OWNER",
-      tenantId: "ten_1",
-    };
-    setUser(mockUser);
-    localStorage.setItem("waai_user", JSON.stringify(mockUser));
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("waai_user");
-    window.location.href = "/login";
-  };
+  const storedUser = hydrated ? getStoredUser() : null;
+  const resolvedUser = user ?? storedUser;
+  const authed = hydrated && isAuthenticated();
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user: resolvedUser,
+        isLoading: !hydrated || (authed && meLoading && !resolvedUser),
+        isAuthenticated: authed,
+        logout: () => logoutMutation.mutate(),
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

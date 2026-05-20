@@ -1,9 +1,14 @@
-import { Zap } from "lucide-react";
+"use client";
 
-export function UsageWidget() {
-  const used = 1847;
-  const total = 2500;
-  const percentage = Math.round((used / total) * 100);
+import { Zap } from "lucide-react";
+import type { DashboardUsage } from "@/types/dashboard";
+
+interface UsageWidgetProps {
+  usage: DashboardUsage;
+}
+
+export function UsageWidget({ usage }: UsageWidgetProps) {
+  const percentage = usage.limit > 0 ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 h-full">
@@ -12,7 +17,6 @@ export function UsageWidget() {
         <h3 className="font-semibold text-gray-900">Monthly Usage</h3>
       </div>
 
-      {/* Donut-style progress */}
       <div className="flex flex-col items-center justify-center py-4">
         <div className="relative w-36 h-36">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -27,6 +31,7 @@ export function UsageWidget() {
               strokeDasharray={`${2 * Math.PI * 40}`}
               strokeDashoffset={`${2 * Math.PI * 40 * (1 - percentage / 100)}`}
               strokeLinecap="round"
+              className="transition-all duration-700"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -36,27 +41,27 @@ export function UsageWidget() {
         </div>
 
         <div className="mt-4 text-center">
-          <p className="text-2xl font-bold text-gray-900">{used.toLocaleString()}</p>
-          <p className="text-sm text-gray-500">of {total.toLocaleString()} messages</p>
+          <p className="text-2xl font-bold text-gray-900">{usage.used.toLocaleString()}</p>
+          <p className="text-sm text-gray-500">of {usage.limit.toLocaleString()} messages</p>
         </div>
       </div>
 
       <div className="border-t border-gray-100 pt-4 mt-2 space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">AI messages</span>
-          <span className="font-medium text-gray-900">1,284</span>
+          <span className="font-medium text-gray-900">{usage.aiMessages.toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Template sends</span>
-          <span className="font-medium text-gray-900">412</span>
+          <span className="font-medium text-gray-900">{usage.templateSends.toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Manual replies</span>
-          <span className="font-medium text-gray-900">151</span>
+          <span className="font-medium text-gray-900">{usage.manualReplies.toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Resets in</span>
-          <span className="font-medium text-gray-900">14 days</span>
+          <span className="font-medium text-gray-900">{usage.resetsInDays} days</span>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev:web": "cd apps/web && npm run dev",
+    "dev:web:clean": "cd apps/web && node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && npm run dev",
     "dev:api": "cd apps/api && npm run start:dev",
     "build:web": "cd apps/web && npm run build",
     "build:api": "cd apps/api && npm run build",

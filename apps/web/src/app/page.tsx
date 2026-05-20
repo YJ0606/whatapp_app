@@ -86,9 +86,9 @@ export default function HomePage() {
               <h4 className="font-semibold text-white mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
             <div>

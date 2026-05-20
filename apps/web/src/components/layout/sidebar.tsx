@@ -5,6 +5,7 @@ import {
   LayoutDashboard, MessageSquare, Zap, HelpCircle, Package,
   Calendar, ShoppingCart, BarChart3, CreditCard, Users, Settings, X,
 } from "lucide-react";
+import { useAuth } from "@/providers/auth-provider";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -26,6 +27,10 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const initials = user
+    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "U"
+    : "U";
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
@@ -68,15 +73,17 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center gap-3 px-2">
+        <Link href="/dashboard/settings" className="flex items-center gap-3 px-2 rounded-lg hover:bg-gray-800 transition-colors">
           <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-xs font-semibold">
-            A
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-white truncate">Admin User</div>
-            <div className="text-xs text-gray-400 truncate">admin@company.com</div>
+            <div className="text-sm font-medium text-white truncate">
+              {user ? `${user.firstName} ${user.lastName}` : "Your account"}
+            </div>
+            <div className="text-xs text-gray-400 truncate">{user?.email ?? "—"}</div>
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );

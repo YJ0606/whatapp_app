@@ -19,6 +19,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { TenantsModule } from "./modules/tenants/tenants.module";
 import { UsersModule } from "./modules/users/users.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { BillingModule } from "./modules/billing/billing.module";
 import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 import { WebhooksModule } from "./modules/webhooks/webhooks.module";
 import { ConversationsModule } from "./modules/conversations/conversations.module";
@@ -65,6 +66,7 @@ import { JobsModule } from "./jobs/jobs.module";
     TenantsModule,
     UsersModule,
     DashboardModule,
+    BillingModule,
     WhatsAppModule,
     WebhooksModule,
     ConversationsModule,

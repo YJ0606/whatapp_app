@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers/query-provider";
 import { AuthProvider } from "@/providers/auth-provider";
+import { SessionSync } from "@/components/auth/session-sync";
 import { TenantProvider } from "@/providers/tenant-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "react-hot-toast";
@@ -39,9 +40,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>
         <ThemeProvider>
-          <AuthProvider>
-            <TenantProvider>
-              <Providers>
+          <Providers>
+            <AuthProvider>
+              <TenantProvider>
+                <SessionSync />
                 {children}
                 <Toaster
                   position="top-right"
@@ -57,9 +59,9 @@ export default function RootLayout({
                     },
                   }}
                 />
-              </Providers>
-            </TenantProvider>
-          </AuthProvider>
+              </TenantProvider>
+            </AuthProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
 
 interface MetricCardProps {
@@ -8,6 +9,7 @@ interface MetricCardProps {
   icon: LucideIcon;
   iconColor: string;
   iconBg: string;
+  href?: string;
 }
 
 export function MetricCard({
@@ -18,9 +20,10 @@ export function MetricCard({
   icon: Icon,
   iconColor,
   iconBg,
+  href,
 }: MetricCardProps) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+  const inner = (
+    <div className={`bg-white rounded-xl border border-gray-200 p-5 transition-shadow ${href ? "hover:shadow-md hover:border-brand-200" : ""}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500 font-medium">{title}</p>
@@ -51,4 +54,14 @@ export function MetricCard({
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {inner}
+      </Link>
+    );
+  }
+
+  return inner;
 }

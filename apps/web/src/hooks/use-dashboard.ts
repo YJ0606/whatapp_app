@@ -1,25 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
+import { unwrapApiData } from "@/lib/api-response";
+import { useAuth } from "@/providers/auth-provider";
+import type { DashboardMetrics } from "@/types/dashboard";
 
-interface DashboardMetrics {
-  messagesHandled: number;
-  activeConversations: number;
-  bookings: number;
-  orders: number;
-  aiResolutionRate: number;
-  humanHandoffs: number;
-  avgResponseTimeMs: number;
-  topFAQs: Array<{ question: string; hits: number }>;
-  weeklyVolume: Array<{ date: string; messages: number; resolved: number }>;
-}
+const LIVE_REFETCH_MS = 30_000;
 
 export function useDashboard() {
-  return useQuery({
-    queryKey: ["dashboard"],
+  const { user, isAuthenticated } = useAuth();
+
+  return useQuery<DashboardMetrics>({
+    queryKey: ["dashboard", user?.tenantId, user?.id, user?.email],
     queryFn: async () => {
-      const { data } = await apiClient.get<DashboardMetrics>("/dashboard");
-      return data;
+      const { data } = await apiClient.get<{ data: DashboardMetrics }>("/dashboard");
+      return unwrapApiData<DashboardMetrics>(data);
     },
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    enabled: isAuthenticated && Boolean(user?.tenantId),
+    staleTime: 10_000,
+    refetchInterval: LIVE_REFETCH_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 }

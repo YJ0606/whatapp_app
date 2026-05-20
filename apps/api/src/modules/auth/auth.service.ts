@@ -34,6 +34,18 @@ export class AuthService {
       },
     });
 
+    const trialEnd = new Date(Date.now() + 14 * 86400000);
+    await this.prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        planId: "starter",
+        trialEndsAt: trialEnd,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: trialEnd,
+        monthlyMessages: 2500,
+      },
+    });
+
     return this.signTokens(user.id, tenant.id);
   }
 

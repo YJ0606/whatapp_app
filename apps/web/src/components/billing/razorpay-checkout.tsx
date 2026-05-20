@@ -1,148 +1,173 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, CreditCard } from "lucide-react";
 import apiClient from "@/lib/api-client";
+import { unwrapApiData } from "@/lib/api-response";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { useAuth } from "@/providers/auth-provider";
+import { useInvalidateBilling } from "@/hooks/use-billing";
+import type { RazorpayOrder } from "@/types/billing";
+import toast from "react-hot-toast";
 
 interface RazorpayCheckoutProps {
   planId: string;
   planName: string;
-  amount: number;
-  description?: string;
+  amountPaise: number;
+  razorpayKeyId?: string;
+  devMode?: boolean;
 }
 
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
   }
 }
 
 export function RazorpayCheckout({
   planId,
   planName,
-  amount,
-  description,
+  amountPaise,
+  razorpayKeyId,
+  devMode,
 }: RazorpayCheckoutProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const invalidateBilling = useInvalidateBilling();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
-  // Load Razorpay script on mount
+  const publicKey =
+    razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+
   useEffect(() => {
+    if (devMode) return;
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     document.body.appendChild(script);
-
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) document.body.removeChild(script);
     };
-  }, []);
+  }, [devMode]);
+
+  const completeDevPayment = async (order: RazorpayOrder) => {
+    const { data } = await apiClient.post("/billing/verify-payment", {
+      paymentId: `pay_dev_${Date.now()}`,
+      orderId: order.id,
+      signature: "dev_mode",
+      planId,
+    });
+    unwrapApiData(data);
+    invalidateBilling();
+    toast.success(`Upgraded to ${planName}!`);
+    router.push("/dashboard/billing?status=success");
+  };
 
   const handleCheckout = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // Step 1: Create order on backend
-      const orderResponse = await apiClient.post("/billing/checkout", { planId });
+      const { data } = await apiClient.post<{ data: RazorpayOrder }>("/billing/checkout", {
+        planId,
+      });
+      const order = unwrapApiData<RazorpayOrder>(data);
 
-      if (!orderResponse.data?.data?.id) {
-        throw new Error("Failed to create payment order");
+      if (order.devMode || devMode) {
+        await completeDevPayment(order);
+        setLoading(false);
+        return;
       }
 
-      const order = orderResponse.data.data;
+      if (!publicKey) {
+        throw new Error("Razorpay key is not configured. Add RAZORPAY_KEY_ID to your API .env.");
+      }
 
-      // Step 2: Prepare Razorpay options
+      if (!window.Razorpay) {
+        throw new Error("Razorpay SDK failed to load. Check your connection.");
+      }
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+        key: order.keyId || publicKey,
         amount: order.amount,
         currency: order.currency || "INR",
         order_id: order.id,
         name: "WaAI",
-        description: description || `Upgrade to ${planName} Plan`,
-        image: "/logo.svg",
-        theme: {
-          color: "#3B82F6", // Brand color
+        description: `Upgrade to ${planName} Plan`,
+        prefill: {
+          email: user?.email ?? "",
+          name: user ? `${user.firstName} ${user.lastName}` : "",
         },
-        handler: async (response: any) => {
+        theme: { color: "#25D366" },
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
           try {
-            // Step 3: Verify payment on backend
-            const verifyResponse = await apiClient.post("/billing/verify-payment", {
+            const verifyRes = await apiClient.post("/billing/verify-payment", {
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
               planId,
             });
-
-            if (verifyResponse.data?.data) {
-              // Payment verified successfully
-              router.push("/dashboard/billing?status=success");
-            } else {
-              throw new Error("Payment verification failed");
-            }
-          } catch (err: any) {
-            setError(err.message || "Payment verification failed");
+            unwrapApiData(verifyRes.data);
+            invalidateBilling();
+            toast.success("Payment successful!");
+            router.push("/dashboard/billing?status=success");
+          } catch (err) {
+            setError(getApiErrorMessage(err, "Payment verification failed"));
             setLoading(false);
           }
         },
         modal: {
           ondismiss: () => {
             setLoading(false);
-            setError("Payment cancelled by user");
           },
-        },
-        prefill: {
-          email: localStorage.getItem("user_email") || "",
-          contact: localStorage.getItem("user_phone") || "",
-        },
-        notes: {
-          planId,
-          planName,
         },
       };
 
-      // Step 4: Open Razorpay checkout
-      if (!window.Razorpay) {
-        throw new Error("Razorpay SDK not loaded");
-      }
-
       const razorpay = new window.Razorpay(options);
       razorpay.open();
-    } catch (err: any) {
-      const errorMessage = err.message || "Failed to initiate payment";
-      setError(errorMessage);
+      setLoading(false);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to initiate payment"));
       setLoading(false);
     }
   };
 
+  const priceInr = Math.round(amountPaise / 100);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {error}
         </div>
       )}
       <button
+        type="button"
         onClick={handleCheckout}
-        disabled={loading || !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID}
+        disabled={loading}
         className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
       >
         {loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Processing...
+            Processing…
           </>
         ) : (
           <>
             <CreditCard className="w-4 h-4" />
-            Upgrade to {planName} - ₹{(amount / 100).toLocaleString("en-IN")}
+            Pay ₹{priceInr.toLocaleString("en-IN")} / mo
           </>
         )}
       </button>
-      {!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && (
-        <p className="text-xs text-gray-500 text-center">
-          Razorpay key not configured
+      {devMode && (
+        <p className="text-xs text-amber-600 text-center">
+          Dev mode: payment will be simulated (no Razorpay keys configured)
         </p>
       )}
     </div>
